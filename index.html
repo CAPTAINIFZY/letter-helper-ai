@@ -11,8 +11,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#FAF4F0">
 
-  <link rel="apple-touch-icon" href="icon.png">
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💌</text></svg>">
 
   <link
     href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&family=Dancing+Script:wght@500;700&family=Pinyon+Script&display=swap"
@@ -747,6 +747,7 @@
       background: transparent;
     }
 
+    /* ADDED DRAG AND DROP CAPABILITY TO TEXTAREA */
     #chat-input {
       flex: 1;
       resize: none;
@@ -1292,8 +1293,13 @@
       <div id="chat-input-row">
         <button id="mic-btn" onclick="toggleMic()" title="Dictate letter">🎙️</button>
 
-        <textarea id="chat-input" placeholder="e.g. Write a sweet apology..." rows="1" onkeydown="handleKey(event)"
-          oninput="autoResize(this)"></textarea>
+        <textarea id="chat-input" placeholder="e.g. Write a sweet apology... (Or drag an archive item here!)" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"
+          ondragover="event.preventDefault(); this.style.borderColor='var(--rose)';"
+          ondragleave="this.style.borderColor='var(--border)';"
+          ondrop="event.preventDefault(); this.value += (this.value ? '\n\n' : '') + '\"' + event.dataTransfer.getData('
+          text') + '\"' ; this.style.borderColor='var(--border)' ; autoResize(this);"></textarea>
+
         <button id="send-btn" onclick="sendMessage()">→</button>
       </div>
     </div>
@@ -1806,7 +1812,7 @@
         if (item.type === 'Thought') tagClass = 'tag-thought';
 
         return `
-      <div class="archive-item" style="animation-delay: ${index * 0.05}s">
+      <div class="archive-item" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', \`${item.text.replace(/`/g, "'")}\`)" style="cursor: grab; animation-delay: ${index * 0.05}s">
         <div class="item-top"><span class="item-tag ${tagClass}">${item.type}</span>
           <div class="item-actions">
             <button class="item-btn" onclick="insertIntoChat(\`${item.text.replace(/`/g, "'")}\`)">↘ Paste</button>
