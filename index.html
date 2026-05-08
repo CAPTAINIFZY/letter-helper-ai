@@ -1278,7 +1278,7 @@
       <div id="photo-bar">
         <span style="font-size:18px;">📸</span>
         <input type="text" id="photo-desc"
-          placeholder="Describe the photo you're sending (e.g., A photo of us at the beach)">
+          placeholder="Describe the photo you're sending (e.g., A photo of the moon tonight)">
         <button class="action-btn" style="padding: 4px 8px; border: none; background: transparent; font-size: 16px;"
           onclick="togglePhotoBar()">×</button>
       </div>
@@ -1396,7 +1396,8 @@
   </div>
 
   <script type="module">
-    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
+    // FIXED INITIALIZATION FOR LATEST WEBLLM VERSION
+    import { MLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
     const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
     let engine;
@@ -1455,7 +1456,6 @@
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           transcript += event.results[i][0].transcript;
         }
-        // Append or replace
         const input = document.getElementById('chat-input');
         if (event.results[event.resultIndex].isFinal) {
           input.value += transcript + " ";
@@ -1537,19 +1537,30 @@
       return prompt;
     }
 
-    // --- INIT MODEL ---
+    // --- EXPLICIT MODEL INITIALIZATION (FIX FOR ERROR) ---
     window.initModel = async function () {
-      if (!navigator.gpu) { alert("WebGPU is not supported. Please use a modern desktop browser."); return; }
-      document.getElementById('init-btn').style.display = 'none'; document.getElementById('progress-wrapper').style.display = 'flex';
+      if (!navigator.gpu) { alert("WebGPU is not supported. Please use a modern desktop Chrome/Edge browser."); return; }
+      document.getElementById('init-btn').style.display = 'none';
+      document.getElementById('progress-wrapper').style.display = 'flex';
+
       try {
-        engine = await CreateMLCEngine(SELECTED_MODEL, {
+        engine = new MLCEngine();
+        await engine.reload(SELECTED_MODEL, {
           initProgressCallback: (progress) => {
             document.getElementById('progress-fill').style.width = Math.round(progress.progress * 100) + '%';
             document.getElementById('progress-text').textContent = progress.text;
           }
         });
-        document.getElementById('progress-wrapper').style.display = 'none'; document.getElementById('enter-btn').style.display = 'block'; showToast("Model loaded into memory!");
-      } catch (e) { document.getElementById('progress-text').textContent = "Error loading model."; console.error(e); }
+
+        document.getElementById('progress-wrapper').style.display = 'none';
+        document.getElementById('enter-btn').style.display = 'block';
+        showToast("Model loaded successfully!");
+      } catch (e) {
+        document.getElementById('progress-text').textContent = "Error loading model. Check console.";
+        console.error(e);
+        document.getElementById('init-btn').style.display = 'block';
+        document.getElementById('progress-wrapper').style.display = 'none';
+      }
     };
 
     window.enterApp = function () { document.getElementById('load-screen').style.display = 'none'; document.getElementById('main-app').style.display = 'flex'; renderArchive(); renderOutbox(); resetWelcomeMessage(); };
@@ -1867,10 +1878,8 @@
 
         const btnCopy = document.createElement('button'); btnCopy.className = 'action-btn'; btnCopy.innerHTML = '📋 Copy'; btnCopy.onclick = () => { navigator.clipboard.writeText(fullReply); showToast('Text copied!'); }; actions.appendChild(btnCopy);
 
-        // SAVE TO OUTBOX BUTTON
         const btnOutbox = document.createElement('button'); btnOutbox.className = 'action-btn'; btnOutbox.innerHTML = '💾 Save to Vault'; btnOutbox.onclick = () => { saveToOutbox(fullReply); }; actions.appendChild(btnOutbox);
 
-        // PRE-FLIGHT EDITOR BUTTON
         const btnExport = document.createElement('button');
         btnExport.className = 'action-btn highlight';
         btnExport.innerHTML = '🖼️ Edit & Save Image';
