@@ -20,7 +20,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
-    /* --- CSS VARIABLES --- */
     :root {
       --rose: #C4405A;
       --rose-light: #F7E8EC;
@@ -243,9 +242,10 @@
     }
 
     .progress-text {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--ink-muted);
       font-weight: 500;
+      line-height: 1.5;
     }
 
     .btn-primary {
@@ -290,6 +290,10 @@
       z-index: 10;
     }
 
+    #sidebar-overlay {
+      display: none;
+    }
+
     #sidebar {
       width: 260px;
       min-width: 260px;
@@ -299,7 +303,7 @@
       flex-direction: column;
       padding: 24px 20px;
       gap: 8px;
-      transition: all 0.3s;
+      transition: left 0.3s ease;
     }
 
     .sidebar-logo {
@@ -427,7 +431,22 @@
       z-index: 10;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--ink);
+      padding: 4px;
+    }
+
+    .header-title-block {
+      flex: 1;
     }
 
     .panel-title {
@@ -454,6 +473,7 @@
       color: var(--ink-muted);
       cursor: pointer;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .header-actions button:hover {
@@ -747,7 +767,6 @@
       background: transparent;
     }
 
-    /* ADDED DRAG AND DROP CAPABILITY TO TEXTAREA */
     #chat-input {
       flex: 1;
       resize: none;
@@ -771,7 +790,6 @@
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 0 0 4px rgba(196, 64, 90, 0.1);
     }
 
-    /* MIC BUTTON */
     #mic-btn {
       background: var(--cream-solid);
       color: var(--ink-soft);
@@ -1159,6 +1177,107 @@
         transform: translateY(0);
       }
     }
+
+    /* --- MOBILE RESPONSIVE FIXES --- */
+    @media (max-width: 768px) {
+      body {
+        padding: 0;
+      }
+
+      #main-app {
+        height: 100vh;
+        width: 100vw;
+        border-radius: 0;
+        flex-direction: column;
+      }
+
+      .menu-toggle {
+        display: block;
+      }
+
+      #sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        height: 100%;
+        z-index: 100;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+        width: 280px;
+      }
+
+      #sidebar.open {
+        left: 0;
+      }
+
+      #sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 90;
+      }
+
+      #sidebar-overlay.open {
+        display: block;
+        animation: fadeInModal 0.3s ease;
+      }
+
+      .panel-header {
+        padding: 16px 20px;
+        flex-wrap: wrap;
+      }
+
+      .panel-title {
+        font-size: 24px;
+      }
+
+      #messages {
+        padding: 16px 20px;
+      }
+
+      .quick-btns {
+        padding: 12px 20px;
+      }
+
+      .magic-bar {
+        padding: 12px 20px;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .magic-btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      #chat-input-row {
+        padding: 12px 20px;
+      }
+
+      .msg {
+        max-width: 95%;
+      }
+
+      .context-form {
+        padding: 16px 20px;
+      }
+
+      .date-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      #archive-add-form,
+      #archive-items,
+      #outbox-items {
+        padding: 16px 20px;
+      }
+    }
   </style>
 </head>
 
@@ -1215,7 +1334,7 @@
       <button class="btn-primary" id="init-btn" onclick="initModel()">Download & Start Local AI ✦</button>
       <div class="progress-wrapper" id="progress-wrapper">
         <p class="progress-text" id="progress-text">Initializing...</p>
-        <div class="progress-bar">
+        <div class="progress-bar" id="progress-bar">
           <div class="progress-fill" id="progress-fill"></div>
         </div>
       </div>
@@ -1224,6 +1343,7 @@
   </div>
 
   <div id="main-app">
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
     <div id="sidebar">
       <div class="sidebar-logo">💌 Letters</div>
       <button class="nav-btn active" onclick="showPanel('chat')" id="nav-chat">✍️ Write</button>
@@ -1241,7 +1361,8 @@
 
     <div class="panel active" id="panel-chat">
       <div class="panel-header">
-        <div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-title-block">
           <div class="panel-title">Write for her</div>
           <div class="panel-sub">Craft the perfect words</div>
         </div>
@@ -1306,7 +1427,8 @@
 
     <div class="panel" id="panel-ideas">
       <div class="panel-header">
-        <div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-title-block">
           <div class="panel-title">Idea Studio</div>
           <div class="panel-sub">Generate highly personalized date nights and gift ideas.</div>
         </div>
@@ -1326,7 +1448,8 @@
 
     <div class="panel" id="panel-outbox">
       <div class="panel-header">
-        <div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-title-block">
           <div class="panel-title">Your Outbox</div>
           <div class="panel-sub">A historical vault of the letters you've crafted.</div>
         </div>
@@ -1336,7 +1459,8 @@
 
     <div class="panel" id="panel-context">
       <div class="panel-header">
-        <div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-title-block">
           <div class="panel-title">Personal Details</div>
           <div class="panel-sub">Help the AI personalize your letters securely.</div>
         </div>
@@ -1386,7 +1510,8 @@
 
     <div class="panel" id="panel-archive">
       <div class="panel-header">
-        <div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-title-block">
           <div class="panel-title">Your Archive</div>
           <div class="panel-sub">Drop quotes, lyrics, or thoughts here to use as inspiration</div>
         </div>
@@ -1425,13 +1550,20 @@
       long: "Make this a deeply expressive, LONG letter (over 250 words) exploring your feelings in detail."
     };
 
-    // --- THEME & UI LOGIC ---
+    // --- UI & THEME LOGIC ---
     window.toggleTheme = function () {
       const isDark = document.body.classList.toggle('dark-theme');
       localStorage.setItem('letterhelper_theme', isDark ? 'dark' : 'light');
       document.getElementById('nav-theme').textContent = isDark ? '☀️ Day Mode' : '🌙 Night Mode';
     }
     if (localStorage.getItem('letterhelper_theme') === 'dark') { document.body.classList.add('dark-theme'); document.getElementById('nav-theme').textContent = '☀️ Day Mode'; }
+
+    window.toggleSidebar = function () {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+    }
 
     window.setLen = (btn, len) => {
       document.querySelectorAll('.len-btn').forEach(b => b.classList.remove('active'));
@@ -1472,6 +1604,13 @@
           input.value += transcript + " ";
         }
         autoResize(input);
+      };
+
+      // FIX 6: Handle Mic errors gracefully
+      recognition.onerror = (event) => {
+        isRecording = false;
+        document.getElementById('mic-btn').classList.remove('recording');
+        showToast("Microphone access denied or failed: " + event.error);
       };
 
       recognition.onend = () => {
@@ -1516,7 +1655,13 @@
       };
       localStorage.setItem('letterhelper_context', JSON.stringify(ctx));
       showToast("Personal details saved!");
-      if (history.length <= 1) history[0] = { role: 'system', content: generateSystemPrompt() };
+
+      // FIX 3: Immediately apply new context to the live engine without needing a clear!
+      if (history.length > 0) {
+        history[0] = { role: 'system', content: generateSystemPrompt() };
+      } else {
+        history.push({ role: 'system', content: generateSystemPrompt() });
+      }
     }
 
     function checkUpcomingDates() {
@@ -1532,25 +1677,30 @@
       return reminders;
     }
 
-    // THE GROUNDED, SINCERE SYSTEM PROMPT
     function generateSystemPrompt() {
       const ctx = JSON.parse(localStorage.getItem('letterhelper_context') || '{}');
-      let prompt = `You are an expert writing assistant helping a man draft genuine, heartfelt letters to his partner.\nCRITICAL INSTRUCTIONS:\n`;
+      let prompt = `You are a ghostwriter helping a man write a normal, sincere letter to his partner. You must write like a real human being, not a cheesy romance novelist.\nCRITICAL INSTRUCTIONS:\n`;
       if (ctx.sender) prompt += `- Sign the letter as "${ctx.sender}". NEVER use generic placeholders.\n`;
       if (ctx.recipient) prompt += `- Address the letter to "${ctx.recipient}". NEVER use generic placeholders.\n`;
-
-      if (ctx.vibe) prompt += `- RELATIONSHIP DETAILS: ${ctx.vibe}\nCRITICAL RULE: DO NOT list, summarize, or "dump" these details. If you reference our history or her preferences, pick ONLY ONE single detail to mention naturally. Be subtle and understated. Less is more.\n`;
-      if (ctx.loveLang) prompt += `- Her primary love language is ${ctx.loveLang}. Tailor the affectionate phrasing to this.\n`;
-      if (ctx.jokes) prompt += `- SHARED VOCABULARY: ${ctx.jokes}\nCRITICAL RULE: Use a maximum of ONE of these phrases, and only if it flows perfectly invisibly.\n`;
-
-      prompt += `- Write in first person. Be sincere and grounded.\n`;
+      if (ctx.vibe) prompt += `- RELATIONSHIP BACKGROUND: ${ctx.vibe}\nCRITICAL RULE: This background is ONLY for tone. DO NOT explicitly mention her favorite items, hobbies, or foods in the letter unless the user specifically asks you to in their prompt. Do not force details into the letter.\n`;
+      if (ctx.loveLang) prompt += `- Her love language is ${ctx.loveLang}. Let this guide the underlying tone, but DO NOT explicitly mention the words "${ctx.loveLang}".\n`;
+      if (ctx.jokes) prompt += `- SHARED VOCABULARY: ${ctx.jokes}\nCRITICAL RULE: DO NOT use these unless it makes perfect sense in context. It is better to use NONE of them than to sound forced.\n`;
+      prompt += `- Write in first person. Be sincere, grounded, and conversational.\n`;
       prompt += `ABSOLUTE RULE: Output ONLY the exact text of the letter. Do NOT include any meta-commentary, explanations, or notes before or after the letter. When you write the sign-off, STOP generating immediately.`;
       return prompt;
     }
 
     // --- EXPLICIT MODEL INITIALIZATION ---
     window.initModel = async function () {
-      if (!navigator.gpu) { alert("WebGPU is not supported. Please use a modern desktop Chrome/Edge browser."); return; }
+      // FIX 2: Better UI Fallback for Mobile WebGPU blocking
+      if (!navigator.gpu) {
+        document.getElementById('progress-wrapper').style.display = 'flex';
+        document.getElementById('progress-bar').style.display = 'none';
+        document.getElementById('init-btn').style.display = 'none';
+        document.getElementById('progress-text').innerHTML = "<b>⚠️ Device Not Supported</b><br><br>This private AI engine requires WebGPU graphics, which is not yet supported on this specific browser or mobile device.<br><br>Please open this link on a <b>Desktop computer using Chrome or Edge</b> to begin.";
+        return;
+      }
+
       document.getElementById('init-btn').style.display = 'none';
       document.getElementById('progress-wrapper').style.display = 'flex';
 
@@ -1582,6 +1732,7 @@
       container.appendChild(toast); setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
     window.parseMarkdown = function (text) { return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>'); }
+
     window.showPanel = function (name) {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1589,7 +1740,14 @@
       document.getElementById('nav-' + name).classList.add('active');
       if (name === 'archive') renderArchive();
       if (name === 'outbox') renderOutbox();
+
+      // Auto-close sidebar on mobile after clicking a link
+      if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+      }
     }
+
     window.autoResize = function (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
     window.handleKey = function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); } }
 
@@ -1733,6 +1891,9 @@
       container.appendChild(bodyText);
       document.body.appendChild(container);
 
+      // FIX 5: Await Google Fonts to completely render before taking the snapshot
+      await document.fonts.ready;
+
       try {
         const canvas = await html2canvas(container, { scale: 2, backgroundColor: container.style.background, useCORS: true });
         const link = document.createElement('a');
@@ -1834,7 +1995,6 @@
 
       prompt += `\n\n${lengthRules[currentLen]}\n\nEMOTIONAL GROUNDING: Keep the following concept in mind while writing: "${randomItem.text}". \nCRITICAL INSTRUCTION: DO NOT quote this text. DO NOT explicitly mention it. Let its underlying emotion quietly dictate the tone of your words in an invisible, natural way.`;
 
-      // Send message to the hidden pipeline
       window.sendMessage(prompt, `✨ Writing a ${currentLen} ${letterType.replace('letter', '').trim()} inspired by a random archive item...`);
     }
 
@@ -1847,32 +2007,26 @@
     window.quickSend = function (text) { window.sendMessage(text); }
     window.tweakMessage = function (originalText, instruction) { const prompt = `Rewrite the following letter to be exactly the same, but make it ${instruction}:\n\n"${originalText}"`; window.sendMessage(prompt, `✨ Tweaking letter to be ${instruction}...`); }
 
-    // --- THE FIXED SEND MESSAGE FUNCTION (Separates AI Prompt from UI Visuals) ---
     window.sendMessage = async function (override, displayText) {
       const input = document.getElementById('chat-input');
       const photoDesc = document.getElementById('photo-desc').value.trim();
 
-      // pure user input or override text
       let userText = override || input.value.trim();
       if (!userText) return;
 
-      // What the user actually sees in the UI (Clean)
       let visualText = displayText || userText;
-
-      // What the AI gets fed in the background (With hidden rules)
       let aiPrompt = userText;
 
       if (!override) {
         input.value = '';
         autoResize(input);
         aiPrompt += `\n\n${lengthRules[currentLen]}`;
-        // SUBTLE PHOTO PROMPT
         if (photoDesc) aiPrompt += `\n(I am sending this letter with a photo: ${photoDesc}. Subtly allude to the imagery of this photo without explicitly saying "I am sending a photo" or "Look at this photo".)`;
       }
 
-      addUserBubble(visualText); // Use the clean visual text for the UI!
+      addUserBubble(visualText);
       document.getElementById('send-btn').disabled = true;
-      history.push({ role: 'user', content: aiPrompt }); // Send the prompt text to history
+      history.push({ role: 'user', content: aiPrompt });
 
       const el = document.getElementById('messages'); const botDiv = document.createElement('div'); botDiv.className = 'msg bot'; const bubble = document.createElement('div'); bubble.className = 'bubble'; botDiv.appendChild(bubble);
       const actions = document.createElement('div'); actions.className = 'bot-actions'; botDiv.appendChild(actions); el.appendChild(botDiv); el.scrollTop = el.scrollHeight;
@@ -1884,7 +2038,6 @@
         for await (const chunk of chunks) {
           fullReply += chunk.choices[0]?.delta?.content || "";
 
-          // THE GAP TRIMMER: Collapses massive double-spaced paragraphs live
           let displayReply = fullReply.replace(/\n{3,}/g, '\n\n');
 
           let parsedHTML = parseMarkdown(displayReply);
@@ -1893,20 +2046,22 @@
           bubble.innerHTML = parsedHTML; el.scrollTop = el.scrollHeight;
         }
 
-        // Final cleanup
         fullReply = fullReply.replace(/\n{3,}/g, '\n\n');
 
         if (ctx.sender) fullReply = fullReply.replace(/\[Your Name\]/gi, ctx.sender).replace(/\[Name\]/gi, ctx.sender);
         if (ctx.recipient) fullReply = fullReply.replace(/\[Her Name\]/gi, ctx.recipient).replace(/\[Recipient Name\]/gi, ctx.recipient);
         history.push({ role: 'assistant', content: fullReply });
 
+        // FIX 4: Memory Management. Delete the oldest User/Bot pair if memory gets too full
+        if (history.length > 15) {
+          history.splice(1, 2);
+        }
+
         actions.innerHTML = '';
         const btnCopy = document.createElement('button'); btnCopy.className = 'action-btn'; btnCopy.innerHTML = '📋 Copy'; btnCopy.onclick = () => { navigator.clipboard.writeText(fullReply); showToast('Text copied!'); }; actions.appendChild(btnCopy);
 
-        // SAVE TO OUTBOX BUTTON
         const btnOutbox = document.createElement('button'); btnOutbox.className = 'action-btn'; btnOutbox.innerHTML = '💾 Save to Vault'; btnOutbox.onclick = () => { saveToOutbox(fullReply); }; actions.appendChild(btnOutbox);
 
-        // PRE-FLIGHT EDITOR BUTTON
         const btnExport = document.createElement('button');
         btnExport.className = 'action-btn highlight';
         btnExport.innerHTML = '🖼️ Edit & Save Image';
