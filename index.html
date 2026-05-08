@@ -14,12 +14,16 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💌</text></svg>">
 
+  <link rel="manifest"
+    href='data:application/manifest+json;charset=utf-8,{"name":"Letter Helper","short_name":"Letters","start_url":".","display":"standalone","background_color":"#FAF4F0","theme_color":"#C4405A","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wnZSMPC90ZXh0Pjwvc3ZnPg==","sizes":"512x512","type":"image/svg+xml"}]}'>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&family=Dancing+Script:wght@500;700&family=Pinyon+Script&display=swap"
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
+    /* --- CSS VARIABLES --- */
     :root {
       --rose: #C4405A;
       --rose-light: #F7E8EC;
@@ -725,7 +729,6 @@
       border-color: var(--rose);
     }
 
-    /* Photo Context Box */
     #photo-bar {
       padding: 10px 32px;
       background: var(--cream);
@@ -767,6 +770,7 @@
       background: transparent;
     }
 
+    /* INPUT & BUTTONS */
     #chat-input {
       flex: 1;
       resize: none;
@@ -788,6 +792,12 @@
     #chat-input:focus {
       border-color: var(--rose);
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02), 0 0 0 4px rgba(196, 64, 90, 0.1);
+    }
+
+    #chat-input:disabled {
+      background: var(--cream);
+      cursor: not-allowed;
+      opacity: 0.7;
     }
 
     #mic-btn {
@@ -846,10 +856,15 @@
       flex-shrink: 0;
     }
 
-    #send-btn:hover {
+    #send-btn:hover:not(:disabled) {
       background: #A8304A;
       transform: translateY(-3px);
       box-shadow: 0 6px 16px rgba(196, 64, 90, 0.3);
+    }
+
+    #send-btn:disabled {
+      background: var(--rose-mid);
+      cursor: not-allowed;
     }
 
     /* --- EDITOR MODAL --- */
@@ -1415,7 +1430,7 @@
         <button id="mic-btn" onclick="toggleMic()" title="Dictate letter">🎙️</button>
 
         <textarea id="chat-input" placeholder="e.g. Write a sweet apology... (Or drag an archive item here!)" rows="1"
-          onkeydown="handleKey(event)" oninput="autoResize(this)"
+          onkeydown="handleKey(event)" oninput="autoResize(this)" ondragenter="event.preventDefault();"
           ondragover="event.preventDefault(); this.style.borderColor='var(--rose)';"
           ondragleave="this.style.borderColor='var(--border)';"
           ondrop="event.preventDefault(); this.value += (this.value ? '\n\n' : '') + '\"' + event.dataTransfer.getData('
@@ -1606,7 +1621,6 @@
         autoResize(input);
       };
 
-      // FIX 6: Handle Mic errors gracefully
       recognition.onerror = (event) => {
         isRecording = false;
         document.getElementById('mic-btn').classList.remove('recording');
@@ -1656,7 +1670,6 @@
       localStorage.setItem('letterhelper_context', JSON.stringify(ctx));
       showToast("Personal details saved!");
 
-      // FIX 3: Immediately apply new context to the live engine without needing a clear!
       if (history.length > 0) {
         history[0] = { role: 'system', content: generateSystemPrompt() };
       } else {
@@ -1692,7 +1705,6 @@
 
     // --- EXPLICIT MODEL INITIALIZATION ---
     window.initModel = async function () {
-      // FIX 2: Better UI Fallback for Mobile WebGPU blocking
       if (!navigator.gpu) {
         document.getElementById('progress-wrapper').style.display = 'flex';
         document.getElementById('progress-bar').style.display = 'none';
@@ -1741,7 +1753,6 @@
       if (name === 'archive') renderArchive();
       if (name === 'outbox') renderOutbox();
 
-      // Auto-close sidebar on mobile after clicking a link
       if (window.innerWidth <= 768) {
         document.getElementById('sidebar').classList.remove('open');
         document.getElementById('sidebar-overlay').classList.remove('open');
@@ -1891,7 +1902,6 @@
       container.appendChild(bodyText);
       document.body.appendChild(container);
 
-      // FIX 5: Await Google Fonts to completely render before taking the snapshot
       await document.fonts.ready;
 
       try {
@@ -2009,6 +2019,7 @@
 
     window.sendMessage = async function (override, displayText) {
       const input = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
       const photoDesc = document.getElementById('photo-desc').value.trim();
 
       let userText = override || input.value.trim();
@@ -2025,7 +2036,11 @@
       }
 
       addUserBubble(visualText);
-      document.getElementById('send-btn').disabled = true;
+
+      // FIX 1: Impatient User Lock
+      input.disabled = true;
+      sendBtn.disabled = true;
+
       history.push({ role: 'user', content: aiPrompt });
 
       const el = document.getElementById('messages'); const botDiv = document.createElement('div'); botDiv.className = 'msg bot'; const bubble = document.createElement('div'); bubble.className = 'bubble'; botDiv.appendChild(bubble);
@@ -2043,7 +2058,12 @@
           let parsedHTML = parseMarkdown(displayReply);
           if (ctx.sender) parsedHTML = parsedHTML.replace(/\[Your Name\]/gi, ctx.sender).replace(/\[Name\]/gi, ctx.sender);
           if (ctx.recipient) parsedHTML = parsedHTML.replace(/\[Her Name\]/gi, ctx.recipient).replace(/\[Recipient Name\]/gi, ctx.recipient);
-          bubble.innerHTML = parsedHTML; el.scrollTop = el.scrollHeight;
+
+          bubble.innerHTML = parsedHTML;
+
+          // FIX 4: Only auto-scroll if the user is already near the bottom
+          const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+          if (isNearBottom) el.scrollTop = el.scrollHeight;
         }
 
         fullReply = fullReply.replace(/\n{3,}/g, '\n\n');
@@ -2052,7 +2072,6 @@
         if (ctx.recipient) fullReply = fullReply.replace(/\[Her Name\]/gi, ctx.recipient).replace(/\[Recipient Name\]/gi, ctx.recipient);
         history.push({ role: 'assistant', content: fullReply });
 
-        // FIX 4: Memory Management. Delete the oldest User/Bot pair if memory gets too full
         if (history.length > 15) {
           history.splice(1, 2);
         }
@@ -2072,7 +2091,11 @@
         const btnSweet = document.createElement('button'); btnSweet.className = 'action-btn'; btnSweet.innerHTML = '🌹 Make Sweeter'; btnSweet.onclick = () => tweakMessage(fullReply, 'sweeter and more romantic'); actions.appendChild(btnSweet);
 
       } catch (e) { bubble.innerHTML = '*System Error: ' + e.message + '*'; history.pop(); }
-      document.getElementById('send-btn').disabled = false; input.focus();
+
+      // FIX 1: Unlock UI
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
     }
   </script>
 </body>
