@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Letter Helper</title>
 
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#FAF4F0">
 
-  <link rel="manifest"
-    href='data:application/manifest+json;charset=utf-8,{"name":"Letter Helper","short_name":"Letters","start_url":".","display":"standalone","background_color":"#FAF4F0","theme_color":"#C4405A","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSIuOWVtIiBmb250LXNpemU9IjkwIj7wnZSMPC90ZXh0Pjwvc3ZnPg==","sizes":"512x512","type":"image/svg+xml"}]}'>
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
 
   <link
     href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&family=Dancing+Script:wght@500;700&family=Pinyon+Script&display=swap"
@@ -511,6 +512,11 @@
       color: white;
       border-bottom-right-radius: 4px;
       font-size: 15px;
+      white-space: pre-wrap;
+    }
+
+    .msg.user .bubble strong {
+      color: white;
     }
 
     .msg.bot .bubble {
@@ -1396,7 +1402,6 @@
   </div>
 
   <script type="module">
-    // FIXED INITIALIZATION FOR LATEST WEBLLM VERSION
     import { MLCEngine } from "https://esm.run/@mlc-ai/web-llm";
 
     const SELECTED_MODEL = "Phi-3-mini-4k-instruct-q4f16_1-MLC";
@@ -1537,7 +1542,7 @@
       return prompt;
     }
 
-    // --- EXPLICIT MODEL INITIALIZATION (FIX FOR ERROR) ---
+    // --- EXPLICIT MODEL INITIALIZATION ---
     window.initModel = async function () {
       if (!navigator.gpu) { alert("WebGPU is not supported. Please use a modern desktop Chrome/Edge browser."); return; }
       document.getElementById('init-btn').style.display = 'none';
@@ -1822,6 +1827,8 @@
       if (letterType === 'apology letter') prompt += `The severity of the apology should be a ${severity} out of 3. `;
 
       prompt += `\n\n${lengthRules[currentLen]}\n\nEMOTIONAL GROUNDING: Keep the following concept in mind while writing: "${randomItem.text}". \nCRITICAL INSTRUCTION: DO NOT quote this text. DO NOT explicitly mention it. Let its underlying emotion quietly dictate the tone of your words in an invisible, natural way.`;
+
+      // Send message to the hidden pipeline
       window.sendMessage(prompt, `✨ Writing a ${currentLen} ${letterType.replace('letter', '').trim()} inspired by a random archive item...`);
     }
 
@@ -1834,24 +1841,32 @@
     window.quickSend = function (text) { window.sendMessage(text); }
     window.tweakMessage = function (originalText, instruction) { const prompt = `Rewrite the following letter to be exactly the same, but make it ${instruction}:\n\n"${originalText}"`; window.sendMessage(prompt, `✨ Tweaking letter to be ${instruction}...`); }
 
+    // --- THE FIXED SEND MESSAGE FUNCTION (Separates AI Prompt from UI Visuals) ---
     window.sendMessage = async function (override, displayText) {
       const input = document.getElementById('chat-input');
       const photoDesc = document.getElementById('photo-desc').value.trim();
+
+      // pure user input or override text
       let userText = override || input.value.trim();
       if (!userText) return;
+
+      // What the user actually sees in the UI (Clean)
       let visualText = displayText || userText;
+
+      // What the AI gets fed in the background (With hidden rules)
       let aiPrompt = userText;
 
       if (!override) {
         input.value = '';
         autoResize(input);
         aiPrompt += `\n\n${lengthRules[currentLen]}`;
+        // SUBTLE PHOTO PROMPT
         if (photoDesc) aiPrompt += `\n(I am sending this letter with a photo: ${photoDesc}. Subtly allude to the imagery of this photo without explicitly saying "I am sending a photo" or "Look at this photo".)`;
       }
 
-      addUserBubble(visualText);
+      addUserBubble(visualText); // Use the clean visual text for the UI!
       document.getElementById('send-btn').disabled = true;
-      history.push({ role: 'user', content: aiPrompt });
+      history.push({ role: 'user', content: aiPrompt }); // Send the prompt text to history
 
       const el = document.getElementById('messages'); const botDiv = document.createElement('div'); botDiv.className = 'msg bot'; const bubble = document.createElement('div'); bubble.className = 'bubble'; botDiv.appendChild(bubble);
       const actions = document.createElement('div'); actions.className = 'bot-actions'; botDiv.appendChild(actions); el.appendChild(botDiv); el.scrollTop = el.scrollHeight;
@@ -1862,24 +1877,30 @@
 
         for await (const chunk of chunks) {
           fullReply += chunk.choices[0]?.delta?.content || "";
-          let displayReply = fullReply.replace(/\n{3,}/g, '\n\n'); // GAP TRIMMER
+
+          // THE GAP TRIMMER: Collapses massive double-spaced paragraphs live
+          let displayReply = fullReply.replace(/\n{3,}/g, '\n\n');
+
           let parsedHTML = parseMarkdown(displayReply);
           if (ctx.sender) parsedHTML = parsedHTML.replace(/\[Your Name\]/gi, ctx.sender).replace(/\[Name\]/gi, ctx.sender);
           if (ctx.recipient) parsedHTML = parsedHTML.replace(/\[Her Name\]/gi, ctx.recipient).replace(/\[Recipient Name\]/gi, ctx.recipient);
           bubble.innerHTML = parsedHTML; el.scrollTop = el.scrollHeight;
         }
 
+        // Final cleanup
         fullReply = fullReply.replace(/\n{3,}/g, '\n\n');
+
         if (ctx.sender) fullReply = fullReply.replace(/\[Your Name\]/gi, ctx.sender).replace(/\[Name\]/gi, ctx.sender);
         if (ctx.recipient) fullReply = fullReply.replace(/\[Her Name\]/gi, ctx.recipient).replace(/\[Recipient Name\]/gi, ctx.recipient);
         history.push({ role: 'assistant', content: fullReply });
 
         actions.innerHTML = '';
-
         const btnCopy = document.createElement('button'); btnCopy.className = 'action-btn'; btnCopy.innerHTML = '📋 Copy'; btnCopy.onclick = () => { navigator.clipboard.writeText(fullReply); showToast('Text copied!'); }; actions.appendChild(btnCopy);
 
+        // SAVE TO OUTBOX BUTTON
         const btnOutbox = document.createElement('button'); btnOutbox.className = 'action-btn'; btnOutbox.innerHTML = '💾 Save to Vault'; btnOutbox.onclick = () => { saveToOutbox(fullReply); }; actions.appendChild(btnOutbox);
 
+        // PRE-FLIGHT EDITOR BUTTON
         const btnExport = document.createElement('button');
         btnExport.className = 'action-btn highlight';
         btnExport.innerHTML = '🖼️ Edit & Save Image';
