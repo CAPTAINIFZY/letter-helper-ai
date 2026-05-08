@@ -1,0 +1,15 @@
+{
+  "name": "Letter Helper",
+  "short_name": "Letters",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FAF4F0",
+  "theme_color": "#C4405A",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
